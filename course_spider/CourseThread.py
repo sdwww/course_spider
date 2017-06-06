@@ -21,7 +21,7 @@ class CourseThread(threading.Thread):
             num += 1
             self.lock.release()
             self.show_course(local_num)
-        time.sleep(0.2)
+        time.sleep(0.1)
 
     def show_course(self, local_num):
         soup = BeautifulSoup(self.content, 'lxml')

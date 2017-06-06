@@ -1,36 +1,32 @@
 import requests
-from bs4 import BeautifulSoup
 from PIL import Image
 import time
 import os
 import threading
 from CourseThread import CourseThread
-
-try:
-    import cookielib
-except:
-    import http.cookiejar as cookielib
+from http import cookiejar
 
 
-def is_login(session, headers):
+def is_login(session, header):
     url = "http://gradms.sdu.edu.cn/person/stuinfo_studentAllInfo.do"
-    login_code = session.get(url, headers=headers, allow_redirects=False).status_code
+    login_code = session.get(url, headers=header, allow_redirects=False).status_code
     if login_code == 200:
         return True
     else:
         return False
 
 
-def login(session, headers):
+# 输入用户名，密码，验证码进行登录
+def login(session, header):
     name = input("请输入用户名：")
     password = input("请输入密码：")
+    validate_code = input("请输入验证码：")
     # 获取验证码
     save_image(session, './saved_jpg', 'validate_code')
-    validate_code = input("请输入验证码：")
     login_post_data = {'login_strLoginName': name, 'login_strPassword': password,
                        'login_strVerify': validate_code, 'login_autoLoginCheckbox': '1'}
     login_url = 'http://gradms.sdu.edu.cn/bsuims/bsMainFrameInit.do'
-    session.post(url=login_url, data=login_post_data, headers=headers)
+    session.post(url=login_url, data=login_post_data, headers=header)
     session.cookies.save(ignore_discard=True, ignore_expires=True)
 
 
@@ -46,7 +42,7 @@ def save_image(session, image_dir, image_name):
         im = Image.open(image_dir + '/' + image_name + '.jpg')
         im.show()
         im.close()
-    except:
+    except IOError:
         print('请手动打开' + image_dir + '下的验证码')
     return True
 
@@ -59,7 +55,7 @@ def save_html(save_path, file_name, content):
         html.write(content)
         html.close()
         return True
-    except:
+    except IOError:
         return False
 
 
@@ -75,11 +71,11 @@ def create_threads(count, lock, content):
 
 if __name__ == "__main__":
     start = time.clock()
-    session = requests.session()
-    session.cookies = cookielib.LWPCookieJar(filename='course_cookies')
+    course_session = requests.session()
+    course_session.cookies = cookiejar.LWPCookieJar(filename='course_cookies')
     try:
-        session.cookies.load(ignore_discard=True)
-    except:
+        course_session.cookies.load(ignore_discard=True)
+    except IOError:
         print("Cookie 未能加载")
 
     # 构造headers
@@ -89,21 +85,17 @@ if __name__ == "__main__":
         "Host": "gradms.sdu.edu.cn",
         'User-Agent': agent
     }
-    if not is_login(session, headers):
-
-        # 输入用户名，密码，验证码进行登录
-        login(session=session, headers=headers)
+    if not is_login(course_session, header=headers):
+        login(session=course_session, header=headers)
     else:
         pass
+
     # 获取课程网页并保存
-    course_content = session.get('http://gradms.sdu.edu.cn/cultivate/cultivate_selectCourseShow.do').text
-    if save_html('./saved_htmls', 'course', course_content):
+    course_content = course_session.get('http://gradms.sdu.edu.cn/cultivate/cultivate_selectCourseShow.do').text
+    if save_html('./saved_html', 'course', course_content):
         print('saved finished')
     else:
         print('saved failed')
-
-    # # 解析课程名
-    # parser_html(course_content)
 
     course_lock = threading.RLock()
     create_threads(count=3, lock=course_lock, content=course_content)
