@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from PIL import Image
 import time
 import os
+import threading
+from CourseThread import CourseThread
 
 try:
     import cookielib
@@ -61,16 +63,14 @@ def save_html(save_path, file_name, content):
         return False
 
 
-def parser_html(course_content):
-    soup = BeautifulSoup(course_content, 'lxml')
-    ticks = soup.find_all('tr', bgcolor="#FFFFFF")
-    for tick in ticks:
-        if tick.find('td', align="center") and tick.find('td', rowspan="13"):
-            print(tick.find('td', align="center").next_sibling.next_sibling.next_sibling.next_sibling
-                  .next_sibling.next_sibling.string.replace('\t', '').replace(' ', '').replace('\n', ''))
-        elif tick.find('td', align="center") and not tick.find('td', rowspan="13"):
-            print(tick.find('td', align="center").next_sibling.next_sibling.next_sibling.next_sibling
-                  .string.replace('\t', '').replace('\n', ''))
+def create_threads(count, lock, content):
+    threads = []
+    for i in range(count):
+        course_thread = CourseThread(name=i, lock=lock, content=content)
+        course_thread.start()
+        threads.append(course_thread)
+    for thread in threads:
+        thread.join()
 
 
 if __name__ == "__main__":
@@ -102,7 +102,9 @@ if __name__ == "__main__":
     else:
         print('saved failed')
 
-    # 解析课程名
-    parser_html(course_content)
+    # # 解析课程名
+    # parser_html(course_content)
 
+    course_lock = threading.RLock()
+    create_threads(count=3, lock=course_lock, content=course_content)
     print('总时间为:', time.clock() - start)
