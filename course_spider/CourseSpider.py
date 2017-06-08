@@ -5,6 +5,7 @@ from http import cookiejar
 
 import requests
 from PIL import Image
+from bs4 import BeautifulSoup
 
 from CourseThread import CourseThread
 
@@ -23,7 +24,7 @@ def is_login(session, header):
 def login(session, header):
     name = input("请输入用户名：")
     password = input("请输入密码：")
-    print("请输入验证码：",end='')
+    print("请输入验证码：", end='')
     # 获取验证码
     save_image(session, './saved_jpg', 'validate_code')
     validate_code = input()
@@ -65,11 +66,39 @@ def save_html(save_path, file_name, content):
         return False
 
 
+def get_left_menu(session):
+    # 获取课程网页并保存
+    content = session.get('http://gradms.sdu.edu.cn/bsuims/bsMainFrameLeftMenuReload.do?'
+                          'contextName=bsUimsLeftMenuPage&currentMenuName=104').text
+    if save_html('./saved_html', 'left_menu', content):
+        print('网页保存成功')
+    else:
+        print('网页保存失败')
+    return content
+
+#解析网页
+def parser_html(content):
+    soup = BeautifulSoup(content, 'lxml')
+    # print(soup.prettify())
+    ticks = soup.find('td').find_all('a')
+    top_path = ''
+    middle_path = ''
+    complete_path = []
+    for tick in ticks:
+        if tick.string:
+            complete_path.append([top_path, middle_path, tick.string, 'http://gradms.sdu.edu.cn' + tick.get('href')])
+        elif tick.find('img').get('id') == 'treeimg1':
+            top_path = tick.next_sibling
+        else:
+            middle_path = tick.next_sibling
+    return complete_path
+
+
 # 创建多线程
-def create_threads(count, lock, content):
+def create_threads(thread_count, session, lock, path):
     threads = []
-    for i in range(count):
-        course_thread = CourseThread(name=i, lock=lock, content=content)
+    for i in range(thread_count):
+        course_thread = CourseThread(name=i, session=session,lock=lock, path=path)
         course_thread.start()
         threads.append(course_thread)
     for thread in threads:
@@ -92,18 +121,15 @@ if __name__ == "__main__":
         "Host": "gradms.sdu.edu.cn",
         'User-Agent': agent
     }
+
     if not is_login(course_session, header=headers):
         login(session=course_session, header=headers)
     else:
         pass
 
-    # 获取课程网页并保存
-    course_content = course_session.get('http://gradms.sdu.edu.cn/cultivate/cultivate_selectCourseShow.do').text
-    if save_html('./saved_html', 'course', course_content):
-        print('网页保存成功')
-    else:
-        print('网页保存失败')
+    left_content = get_left_menu(course_session)
+    complete_path = parser_html(left_content)
 
     course_lock = threading.RLock()
-    create_threads(count=3, lock=course_lock, content=course_content)
+    create_threads(thread_count=3, session=course_session, lock=course_lock, path=complete_path)
     print('总时间为:', time.clock() - start)
