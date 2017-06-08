@@ -1,5 +1,6 @@
 import threading
 import time
+
 from bs4 import BeautifulSoup
 
 num = 0
@@ -30,9 +31,10 @@ class CourseThread(threading.Thread):
             if tick.find('td', align="center") and tick.find('td', rowspan="13") and tick.find('td', align="center"). \
                     next_sibling.next_sibling.string.replace('\t', '').replace(' ', '').replace('\n', '') == \
                     str(local_num):
-                print(tick.find('td', align="center").next_sibling.next_sibling.next_sibling.next_sibling.next_sibling
-                      .next_sibling.string.replace('\t', '').replace(' ', '').replace('\n', ''), self.name)
+                print(tick.find('td', align="center").next_sibling
+                      .next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.
+                      string.replace('\t', '').replace(' ', '').replace('\n', ''))
             elif tick.find('td', align="center") and not tick.find('td', rowspan="13") and tick. \
                     find('td', align="center").string.replace('\t', '').replace('\n', '') == str(local_num):
                 print(tick.find('td', align="center").next_sibling.next_sibling.next_sibling.next_sibling
-                      .string.replace('\t', '').replace('\n', ''), self.name)
+                      .string.replace('\t', '').replace('\n', ''))

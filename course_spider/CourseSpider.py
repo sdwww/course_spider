@@ -1,12 +1,15 @@
-import requests
-from PIL import Image
-import time
 import os
 import threading
-from CourseThread import CourseThread
+import time
 from http import cookiejar
 
+import requests
+from PIL import Image
 
+from CourseThread import CourseThread
+
+
+# 判断用户是否已经登录
 def is_login(session, header):
     url = "http://gradms.sdu.edu.cn/person/stuinfo_studentAllInfo.do"
     login_code = session.get(url, headers=header, allow_redirects=False).status_code
@@ -20,9 +23,10 @@ def is_login(session, header):
 def login(session, header):
     name = input("请输入用户名：")
     password = input("请输入密码：")
-    validate_code = input("请输入验证码：")
+    print("请输入验证码：",end='')
     # 获取验证码
     save_image(session, './saved_jpg', 'validate_code')
+    validate_code = input()
     login_post_data = {'login_strLoginName': name, 'login_strPassword': password,
                        'login_strVerify': validate_code, 'login_autoLoginCheckbox': '1'}
     login_url = 'http://gradms.sdu.edu.cn/bsuims/bsMainFrameInit.do'
@@ -30,6 +34,7 @@ def login(session, header):
     session.cookies.save(ignore_discard=True, ignore_expires=True)
 
 
+# 保存验证码并打开
 def save_image(session, image_dir, image_name):
     image_url = 'http://gradms.sdu.edu.cn/validatecode.jpg'
     response = session.get(image_url, stream=True)
@@ -47,6 +52,7 @@ def save_image(session, image_dir, image_name):
     return True
 
 
+# 保存网页内容
 def save_html(save_path, file_name, content):
     try:
         if not os.path.isdir(save_path + '/'):
@@ -59,6 +65,7 @@ def save_html(save_path, file_name, content):
         return False
 
 
+# 创建多线程
 def create_threads(count, lock, content):
     threads = []
     for i in range(count):
@@ -93,9 +100,9 @@ if __name__ == "__main__":
     # 获取课程网页并保存
     course_content = course_session.get('http://gradms.sdu.edu.cn/cultivate/cultivate_selectCourseShow.do').text
     if save_html('./saved_html', 'course', course_content):
-        print('saved finished')
+        print('网页保存成功')
     else:
-        print('saved failed')
+        print('网页保存失败')
 
     course_lock = threading.RLock()
     create_threads(count=3, lock=course_lock, content=course_content)
